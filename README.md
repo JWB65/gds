@@ -9,5 +9,3 @@ The member function `Collapse` can be used to collapse (flatten) a cell in the
 database object and output it to an output file and/or a std::vector of polygons.
 
 The `Main.cpp` file is an example of its use.
-
-Details are provide in the header file gds.h and main.c contains an example.
