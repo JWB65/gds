@@ -64,35 +64,31 @@ namespace GDS
 namespace GDS
 {
 	struct Database {
-		// Construct the object from a GDS file
-		Database(const wchar_t* file);
+		
+		Database(const wchar_t* file); // Construct from a GDS file
 
 		// Collapses cell and write to file and/or a Polygon vector.
 		void CollapseCell(const wchar_t* cell, const double* bounds, uint64_t max_polys, const wchar_t* dest, std::vector<Polygon>* pset);
 
-		// Write all the cells to a vector
-		void AllCells(std::vector<std::wstring>& sset);
+		void AllCells(std::vector<std::wstring>& sset); // Write all the cells to a vector
 
-		// Write the top cells to a vector.
-		void TopCells(std::vector<std::wstring>& sset);
+		void TopCells(std::vector<std::wstring>& sset); // Write the top cells to a vector
 
-		// Units from the GDS_UNITS record.
-		double m_uu_per_dbunit = 0.0, m_meter_per_dbunit = 0.0;
+		
+		double m_uu_per_dbunit = 0.0, m_meter_per_dbunit = 0.0; // Units from the GDS_UNITS record
 
-		// The file path
+
 		std::wstring m_filePath;
 
-		// The GDS structures
 		std::vector<Cell> m_cells;
 
-		// The GDS version (must be 6 or 600)
-		uint16_t m_version = 0;
+		std::vector<std::wstring> m_libnames;
+
+		uint16_t m_version = 0; // The GDS version (must be 6 or 600)
 
 		// The raw data in the GDS_UNITS record read (so as to easily write back
 		// to an output file without conversions.
 		uint8_t m_units[16] = { 0 };
-
-		std::vector<std::wstring> m_libnames;
 	};
 
 	// Static helper function (unrelated to this class).

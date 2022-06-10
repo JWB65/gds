@@ -19,7 +19,6 @@ int wmain()
 	// write to an newly created output GDS file and/or a set of Polygons.
 	*/ 
 
-
 	try
 	{
 		// Create a gds database from the example GDS file "nand.gds".

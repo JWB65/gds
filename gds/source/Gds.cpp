@@ -11,39 +11,41 @@
 #include "Gds.h"
 #include "GdsRecords.h"
 #include "StringConverter.h"
+
 #include <stdexcept>
 
 const double M_PI = 3.14159265358979323846;
 
+namespace GDS {
+	struct Line {
+		// Standard form of a line.
+
+		double a, b, c;
+	};
+
+	struct Transform {
+		// GDS reference cell rransformation parameters.
+
+		int32_t x = 0, y = 0;
+		double mag = 1.0, angle = 0.0;
+		uint16_t mirror = 0;
+	};
+
+	struct Recdata {
+		Database* gds;
+
+		bool usebbox;
+
+		uint64_t scount, pcount, max_polys;
+
+		Pair bbox[5];
+
+		FILE* poutfile;
+		std::vector<Polygon>* pset;
+	};
+}
+
 using namespace GDS;
-
-struct gds_line {
-	// Standard form of a line.
-
-	double a, b, c;
-};
-
-struct gds_trans {
-	// GDS reference cell rransformation parameters.
-
-	int32_t x = 0, y = 0;
-	double mag = 1.0, angle = 0.0;
-	uint16_t mirror = 0;
-};
-
-struct Recdata {
-	Database* gds;
-
-	bool usebbox;
-
-	uint64_t scount, pcount, max_polys;
-
-	Pair bbox[5];
-
-	FILE* poutfile;
-	std::vector<Polygon>* pset;
-};
-
 
 static double BufReadFloat(uint8_t* p)
 {
@@ -94,9 +96,7 @@ static Pair SumPairs(Pair one, Pair two)
 	return out;
 }
 
-//
 // Functions to add data to the output file
-//
 
 static void FileAppendBytes(FILE* file, uint16_t record, uint8_t* data, size_t len)
 {
@@ -159,7 +159,7 @@ static void FileAppendString(FILE* file, uint16_t record, const char* string)
 }
 
 
-static void TransformPoly(Pair* pout, Pair* pin, size_t size, gds_trans tra)
+static void TransformPoly(Pair* pout, Pair* pin, size_t size, Transform tra)
 {
 	unsigned int i;
 	double sign = 1.0;
@@ -176,9 +176,7 @@ static void TransformPoly(Pair* pout, Pair* pin, size_t size, gds_trans tra)
 	}
 }
 
-//
 // Functions to add a polygon to a file and polygon set
-//
 
 static void BufWriteInt(uint8_t* p, size_t offset, int32_t n) {
 	p[offset + 0] = uint8_t((n >> 24) & 0xFF);
@@ -247,9 +245,7 @@ static void AddPoly(Pair* pairs, size_t size, uint16_t layer, Recdata& data)
 		return;
 }
 
-//
 // Functions to expand a GDS PATH element
-//
 
 static Pair ExtendVector(Pair tail, Pair head, double length)
 {
@@ -269,7 +265,7 @@ static Pair ExtendVector(Pair tail, Pair head, double length)
 	return out;
 }
 
-static Pair IntersectLines(gds_line* one, gds_line* two)
+static Pair IntersectLines(Line* one, Line* two)
 {
 	double xh, yh, wh;
 
@@ -284,9 +280,9 @@ static Pair IntersectLines(gds_line* one, gds_line* two)
 	return out;
 }
 
-static Pair ProjectLine(Pair p, gds_line* line)
+static Pair ProjectLine(Pair p, Line* line)
 {
-	gds_line normal;
+	Line normal;
 
 	// normal to Ax+By+C = 0 through (x1, y1)
 	// A'x+B'y+C' = 0 with
@@ -304,14 +300,14 @@ static void ExpandPath(Pair* pout, Pair* pin, size_t size, uint32_t width, int p
 {
 	size_t i;
 	double hwidth = width / 2.0;
-	gds_line* mline, * pline;
+	Line* mline, * pline;
 	Pair end_point;
 
 	if (size < 2) return;
 
 	// parallel line segments on both sides
-	mline = new gds_line[size - 1];
-	pline = new gds_line[size - 1];
+	mline = new Line[size - 1];
+	pline = new Line[size - 1];
 
 	if (!mline || !pline) return;
 
@@ -366,9 +362,7 @@ static void ExpandPath(Pair* pout, Pair* pin, size_t size, uint32_t width, int p
 	delete[] mline;
 }
 
-//
 // Functions to recurse through the hierarchy of the cell
-//
 
 static Cell* FindCell(Database* gds, const wchar_t* name)
 {
@@ -380,7 +374,7 @@ static Cell* FindCell(Database* gds, const wchar_t* name)
 	return nullptr;
 }
 
-static bool Recurse(Cell& top, gds_trans tra, Recdata& data)
+static bool Recurse(Cell& top, Transform tra, Recdata& data)
 {
 	// Return false if the recursion needs to stop because of an error or the
 	// max allowed output polygons is reached.
@@ -419,7 +413,7 @@ static bool Recurse(Cell& top, gds_trans tra, Recdata& data)
 	for (auto it = std::begin(top.srefs); it != std::end(top.srefs); ++it)
 	{
 		Cell* str;
-		gds_trans acc_tra;
+		Transform acc_tra;
 
 		str = FindCell(data.gds, it->sname);
 
@@ -470,7 +464,7 @@ static bool Recurse(Cell& top, gds_trans tra, Recdata& data)
 
 				int x_ref, y_ref, x_ref_t, y_ref_t;
 				double angle_radians, sign;
-				gds_trans acc_tra;
+				Transform acc_tra;
 
 				// Origin of the cell being referenced in the reference
 				// frame of the aref
@@ -507,6 +501,7 @@ static bool Recurse(Cell& top, gds_trans tra, Recdata& data)
 	return true;
 }
 
+// Member functions
 
 Database::Database(const wchar_t* file)
 {
@@ -897,7 +892,7 @@ void Database::AllCells(std::vector<std::wstring>& sset)
 void Database::CollapseCell(const wchar_t* cell, const double* bounds, uint64_t max_polys, const wchar_t* dest, std::vector<Polygon>* pset)
 {
 	Recdata rdata{};
-	gds_trans trans{};
+	Transform trans{};
 
 	rdata.pset = pset;
 	rdata.max_polys = max_polys;
@@ -992,6 +987,7 @@ void Database::TopCells(std::vector<std::wstring>& sset)
 	}
 }
 
+// Stand-alone helper
 
 bool GDS::PointInPoly(Pair* poly, int n, Pair p)
 {

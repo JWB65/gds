@@ -6,8 +6,6 @@
 * LICENSE file in the root directory of this source tree.
 */
 
-#pragma warning( disable : 6011 4711 5045 4710)
-
 #include "Polygon.h"
 
 namespace GDS {
