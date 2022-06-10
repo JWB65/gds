@@ -1,6 +1,6 @@
 # gdscollapse
 
-A small C library for reading a GDSII file and collapse a cell in it to just simple polygons.
+A small C++ class for reading a GDSII file and collapse a cell in it to just simple polygons.
 
 The library defines a class named `GDS::Database` with is contructed gds database objects
 from a GDS file.
