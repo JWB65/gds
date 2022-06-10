@@ -23,9 +23,7 @@ int wmain()
 	try
 	{
 		// Create a gds database from the example GDS file "nand.gds".
-		//GDS::Database gds = GDS::Database(L"nand.gds");
-		GDS::Database gds = GDS::Database(L"tm10.gds");
-
+		GDS::Database gds = GDS::Database(L"nand.gds");
 
 		/*
 		// Write all the top cells to a vector of strings
@@ -53,18 +51,14 @@ int wmain()
 		*/
 
 		// Declare and initialize the cell to collapse.
-		//std::wstring cell(L"NAND");
-		std::wstring cell(L"0_Panel_X1");
-
+		std::wstring cell(L"NAND");
 
 		// Enter the bounding box of the part of the GDS cell to output
 		// bottom/left x = 28.7 and y = 45.2 followed by top/right x = 50.0 and y = 85.5
 		// in GDS user units (usually micron). Or enter a null pointer if no bounding
 		// is to be used. This could for a typical GDS cell create many polygons so
 		// do with care.
-		//double bounds[4] = { 28.7, 45.2, 50.0, 85.5 };
-		double bounds[4] = { -1791, 5618, - 1741, 5668 };
-
+		double bounds[4] = { 28.7, 45.2, 50.0, 85.5 };
 
 		// Set an upper limit to the number of polys to output.
 		uint64_t maxPolys = (uint64_t)10E+6;
