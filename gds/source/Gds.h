@@ -12,7 +12,6 @@
 
 #include <string>
 #include <vector>
-#include <memory>
 
 #define GDS_MAX_STR_NAME (32)
 
@@ -20,19 +19,13 @@ namespace GDS
 {
 	struct Bndry {
 		uint16_t layer = 0xFFFF;
-		std::unique_ptr<Pair[]> pairs;
-
-		// max 200 pairs in the GDS standard
-		uint8_t size;
+		std::vector<Pair> pairs;
 	};
 
 	struct Path {
 		uint16_t layer = 0xFFFF;
 
-		std::unique_ptr<Pair[]> pairs;
-
-		// max 200 pairs in the GDS standard
-		uint8_t size;
+		std::vector<Pair> pairs;
 
 		uint16_t pathtype;
 		uint32_t width;
@@ -70,33 +63,27 @@ namespace GDS
 
 namespace GDS
 {
-	class Database {
-	public:
-		~Database();
-
-		// Load GDS file
+	struct Database {
+		// Construct the object from a GDS file
 		Database(const wchar_t* file);
 
 		// Collapses cell and write to file and/or a Polygon vector.
-		void CollapseCell(const wchar_t* cell, const double* bounds, uint64_t max_polys, const wchar_t* dest, std::vector<Polygon*>* pset);
+		void CollapseCell(const wchar_t* cell, const double* bounds, uint64_t max_polys, const wchar_t* dest, std::vector<Polygon>* pset);
 
-		//
+		// Write all the cells to a vector
 		void AllCells(std::vector<std::wstring>& sset);
 
 		// Write the top cells to a vector.
 		void TopCells(std::vector<std::wstring>& sset);
 
-
-
 		// Units from the GDS_UNITS record.
 		double m_uu_per_dbunit = 0.0, m_meter_per_dbunit = 0.0;
 
-		std::wstring filePath;
+		// The file path
+		std::wstring m_filePath;
 
 		// The GDS structures
 		std::vector<Cell> m_cells;
-
-	private:
 
 		// The GDS version (must be 6 or 600)
 		uint16_t m_version = 0;

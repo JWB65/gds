@@ -13,18 +13,15 @@
 namespace GDS {
 	Polygon::Polygon(Pair* p, size_t size, uint16_t layer)
 	{
-		m_pairs = new Pair[size];
-		m_size = size;
+		for (size_t i = 0; i < size; i++)
+		{
+			m_pairs.push_back(p[i]);
+		}
 		m_layer = layer;
 
 		for (size_t i = 0; i < size; ++i) {
 			m_pairs[i].x = p[i].x;
 			m_pairs[i].y = p[i].y;
 		}
-	}
-
-	Polygon::~Polygon()
-	{
-		delete[] m_pairs;
 	}
 }

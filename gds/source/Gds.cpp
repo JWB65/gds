@@ -41,7 +41,7 @@ struct Recdata {
 	Pair bbox[5];
 
 	FILE* poutfile;
-	std::vector<Polygon*>* pset;
+	std::vector<Polygon>* pset;
 };
 
 
@@ -237,27 +237,14 @@ static void AddPoly(Pair* pairs, size_t size, uint16_t layer, Recdata& data)
 			FileAppendPoly(data.poutfile, pairs, size, layer);
 		}
 		if (data.pset) {
-			// Polygon on the heap to add to polyset
-			//Pair* p = new Pair[size];
-			//if (p)
-				//memcpy(p, &pairs[0], size * sizeof(Pair));
-
-			// https://stackoverflow.com/questions/9331561/why-does-my-classs-destructor-get-called-when-i-add-instances-to-a-vector
-			// https://stackoverflow.com/questions/10488348/add-to-vector-without-copying-struct-data
-
-			Polygon* p = new Polygon(pairs, size, layer);
-
-			//Polygon p(pairs, size, layer);
+			Polygon p(pairs, size, layer);
 			data.pset->push_back(p);
-			//data.pset->emplace_back(p);
-			//delete p;
 		}
 		data.pcount++;
 	}
 
 	if (data.pcount >= data.max_polys)
 		return;
-
 }
 
 //
@@ -404,9 +391,9 @@ static bool Recurse(Cell& top, gds_trans tra, Recdata& data)
 	// BOUNDARY elements
 	for (auto it = std::begin(top.boundaries); it != std::end(top.boundaries); ++it)
 	{
-		TransformPoly(out, it->pairs.get(), it->size, tra);
+		TransformPoly(out, &it->pairs.at(0), it->pairs.size(), tra);
 
-		AddPoly(out, it->size, it->layer, data);
+		AddPoly(out, it->pairs.size(), it->layer, data);
 
 		if (data.pcount >= data.max_polys)
 			return false;
@@ -416,10 +403,10 @@ static bool Recurse(Cell& top, gds_trans tra, Recdata& data)
 	for (auto it = std::begin(top.paths); it != std::end(top.paths); ++it)
 	{
 		// The size of the expanded polygon
-		size_t out_size = 2 * it->size + 1U;
+		size_t out_size = 2 * it->pairs.size() + 1U;
 
 		// Expand and transform
-		ExpandPath(tmp, it->pairs.get(), it->size, it->width, it->pathtype);
+		ExpandPath(tmp, &it->pairs.at(0), it->pairs.size(), it->width, it->pathtype);
 		TransformPoly(out, tmp, out_size, tra);
 
 		AddPoly(out, out_size, it->layer, data);
@@ -525,7 +512,7 @@ Database::Database(const wchar_t* file)
 {
 	FILE* p_file;
 
-	filePath = std::wstring(file);
+	m_filePath = std::wstring(file);
 
 	enum STR_TYPE
 	{
@@ -786,21 +773,14 @@ Database::Database(const wchar_t* file)
 					if (count >= 8191)
 						throw std::runtime_error("Invalid XY record data for BOUNDARY");
 
-					curBndry.size = uint8_t(count);
-
-					// This pointer could be left dangling if there is and error
-					// further downs in the GDS file. So we make it a unique pointer
-					// and move it later when the element is final when ENDEL is
-					// received.
-					curBndry.pairs = std::unique_ptr<Pair[]> (new Pair[count]);
-
 					for (unsigned int n = 0; n < count; n++) {
+
 						unsigned int i = 8 * n;
 						int x = buf[i] << 24 | buf[i + 1] << 16 | buf[i + 2] << 8 | buf[i + 3];
 						int y = buf[i + 4] << 24 | buf[i + 5] << 16 | buf[i + 6] << 8 | buf[i + 7];
 
-						curBndry.pairs[n].x = x;
-						curBndry.pairs[n].y = y;
+						Pair pair = { x, y };
+						curBndry.pairs.push_back(pair);
 					}
 					break;
 				}
@@ -824,18 +804,13 @@ Database::Database(const wchar_t* file)
 					if (count >= 8191)
 						throw std::runtime_error("Invalid XY record data for PATH");
 
-					curPath.size = uint8_t(count);
-
-					//** NEW **//
-					curPath.pairs = std::unique_ptr<Pair[]> (new Pair[count]);
-
 					for (unsigned int n = 0; n < count; n++) {
 						unsigned int i = 8U * n;
 						int x = buf[i] << 24 | buf[i + 1] << 16 | buf[i + 2] << 8 | buf[i + 3];
 						int y = buf[i + 4] << 24 | buf[i + 5] << 16 | buf[i + 6] << 8 | buf[i + 7];
 
-						curPath.pairs[n].x = x;
-						curPath.pairs[n].y = y;
+						Pair pair = { x, y };
+						curPath.pairs.push_back(pair);
 					}
 				}
 				break;
@@ -911,11 +886,6 @@ Database::Database(const wchar_t* file)
 		fclose(p_file);
 }
 
-#include <iostream>
-Database::~Database() {
-	std::cout << "~Database\n";
-}
-
 void Database::AllCells(std::vector<std::wstring>& sset)
 {
 	for (auto it : m_cells)
@@ -924,7 +894,7 @@ void Database::AllCells(std::vector<std::wstring>& sset)
 	}
 }
 
-void Database::CollapseCell(const wchar_t* cell, const double* bounds, uint64_t max_polys, const wchar_t* dest, std::vector<Polygon*>* pset)
+void Database::CollapseCell(const wchar_t* cell, const double* bounds, uint64_t max_polys, const wchar_t* dest, std::vector<Polygon>* pset)
 {
 	Recdata rdata{};
 	gds_trans trans{};
@@ -1023,7 +993,7 @@ void Database::TopCells(std::vector<std::wstring>& sset)
 }
 
 
-bool PointInPoly(Pair* poly, int n, Pair p)
+bool GDS::PointInPoly(Pair* poly, int n, Pair p)
 {
 	// Evaluate if test point P is inside the polygon @poly.
 	// Returns true if yes and false if no
@@ -1047,3 +1017,4 @@ bool PointInPoly(Pair* poly, int n, Pair p)
 	// if the coint is off the point is outside the polygon
 	return (bool(count % 2));
 }
+

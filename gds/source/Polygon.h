@@ -17,14 +17,9 @@ namespace GDS {
 		int32_t x, y;
 	};
 
-	class Polygon {
-	public:
+	struct Polygon {
 		Polygon(Pair* p, size_t size, uint16_t layer);
-		~Polygon();
-
-	private:
-		Pair* m_pairs;
-		size_t m_size;
+		std::vector<Pair> m_pairs;
 		uint16_t m_layer;
 	};
 }
