@@ -1,4 +1,4 @@
-# gdscollapse
+# A tool for working with GDSII files
 
 A small C++ class for reading a GDSII file and collapse a cell in it to just simple polygons.
 
